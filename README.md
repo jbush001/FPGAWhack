@@ -6,7 +6,7 @@ To use:
 
     python compile.py
 
-<enter a formula followed by ctrl-D>
+_enter a formula followed by ctrl-D_
 
     x+y+f
     
