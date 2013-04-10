@@ -122,22 +122,14 @@ class CodeGenerator:
 	def pushConstant(self, value):
 		self.operandStack += [ ('const', value) ]
 
-	BUILTIN_VARS = {
-		'x' : 8,
-		'ix' : 8,
-		'y' : 9,
-		'iy' : 9,
-		'f' : 10
-	}
-
-	def pushVariableRef(self, value):
-		if value in self.BUILTIN_VARS:
-			self.operandStack += [ ('freg', self.BUILTIN_VARS[value]) ]
-		else:
-			raise Exception('unknown variable ' + value)
+	def pushVariableRef(self, index):
+		self.operandStack += [ ('freg', index ) ]
 
 	def _emitMicroInstruction(self, opcode, dest, srca, srcb, isConst, constVal):
 		self.numInstructions += 1
+		if self.numInstructions == 16:
+			raise Exception('formula too complex: exceeded instruction memory')
+			
 		self.outputFile.write('%013x\n' % ((dest << 45) | (srca << 41) | (srcb << 37) | (opcode << 33) | (isConst << 32) | constVal))
 
 		# Pretty print operation
@@ -146,17 +138,6 @@ class CodeGenerator:
 			print '%s r%d, r%d, #%d' % (pretty[opcode], dest, srca, constVal)
 		else:
 			print '%s r%d, r%d, r%d' % (pretty[opcode], dest, srca, srcb)
-
-	OPERATORS = {
-		'&' : 0,
-		'^' : 1,
-		'|' : 2,
-		'+' : 3,
-		'-' : 4,
-		'*' : 5,
-		'<<' : 6,
-		'>>' : 7
-	}
 
 	def doOp(self, operation):
 		type2, op2 = self.operandStack.pop()
@@ -175,9 +156,9 @@ class CodeGenerator:
 		resultReg = self._allocateTemporary()
 		self.operandStack += [ ('reg', resultReg)]
 		if type2 == 'const':
-			self._emitMicroInstruction(self.OPERATORS[operation], resultReg, op1, 0, 1, op2)
+			self._emitMicroInstruction(operation, resultReg, op1, 0, 1, op2)
 		else:
-			self._emitMicroInstruction(self.OPERATORS[operation], resultReg, op1, op2, 0, 0)
+			self._emitMicroInstruction(operation, resultReg, op1, op2, 0, 0)
 
 	def saveResult(self):
 		# Emit an instruction to move into the result register
@@ -189,13 +170,16 @@ class CodeGenerator:
 		else:
 			raise Exception('internal error: bad type on operand stack')
 
-		for i in range(self.numInstructions, 64):
+		for i in range(self.numInstructions, 16):
 			self.outputFile.write('0000000000000\n')
 
 		self.outputFile.close()
 
 	def _allocateTemporary(self):
-		return self.freeRegisters.pop()
+		if len(self.freeRegisters) == 0:
+			raise Exception('formula too complex: out of registers')
+		else:
+			return self.freeRegisters.pop()
 		
 	def _freeTemporary(self, val):
 		self.freeRegisters += [ val ]
@@ -213,6 +197,14 @@ class Parser:
 		self._parsePrimaryExpression()
 		self._parseInfixExpression(0)
 
+	BUILTIN_VARS = {
+		'x' : 8,
+		'ix' : 8,
+		'y' : 9,
+		'iy' : 9,
+		'f' : 10
+	}
+
 	def _parsePrimaryExpression(self):
 		tok = self.scanner.nextToken()
 		if tok == '(':
@@ -223,19 +215,23 @@ class Parser:
 		elif isinstance(tok, int) or isinstance(tok, long):
 			self.generator.pushConstant(tok)
 		else:
-			self.generator.pushVariableRef(tok)
+			if tok in self.BUILTIN_VARS:
+				self.generator.pushVariableRef(self.BUILTIN_VARS[tok])
+			else:
+				raise Exception('unknown variable ' + tok)
 
-	# Operators with their precedence numbers
-	OP_PRECEDENCE = {
-		'|' : 1,
-		'^' : 2,
-		'&' : 3,
-		'>>' : 4,
-		'<<' : 4,
-		'+' : 5,
-		'-' : 6,
-		'*' : 7,
-#		'/' : 7,
+	# Operator lookup table
+	# (precedence, opcode)
+	OPERATORS = {
+		'&' : ( 3, 0 ),
+		'^' : ( 2, 1 ),
+		'|' : ( 1, 2 ),
+		'+' : ( 5, 3 ),
+		'-' : ( 6, 4 ),
+		'*' : ( 7, 5 ),
+		'<<' : ( 4, 6 ),
+		'>>' : ( 4, 7 ),
+#		'/' : ( 7, -1 )
 	}
 
 	def _parseInfixExpression(self, minPrecedence):
@@ -244,11 +240,11 @@ class Parser:
 			if outerOp == None:
 				break
 
-			if outerOp not in self.OP_PRECEDENCE:
+			if outerOp not in self.OPERATORS:
 				self.scanner.pushBack()
 				break
 			
-			outerPrecedence = self.OP_PRECEDENCE[outerOp]
+			outerPrecedence, outerOpcode = self.OPERATORS[outerOp]
 			if outerPrecedence < minPrecedence:
 				self.scanner.pushBack()
 				break
@@ -260,16 +256,16 @@ class Parser:
 				 	break
 				 
 				self.scanner.pushBack()
-				if lookahead not in self.OP_PRECEDENCE:
+				if lookahead not in self.OPERATORS:
 					break
 					
-				innerPrecedence = self.OP_PRECEDENCE[lookahead]
+				innerPrecedence, _ignore = self.OPERATORS[lookahead]
 				if innerPrecedence <= outerPrecedence:
 					break
 					
 				self._parseInfixExpression(innerPrecedence)
 
-			self.generator.doOp(outerOp)
+			self.generator.doOp(outerOpcode)
 
 p = Parser('microcode.hex')
 p.parse()
