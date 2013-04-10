@@ -58,8 +58,8 @@ module top(
 		.start_next_batch(start_next_batch),
 		.result_ready(pixels_ready));
 
-	assign red_o = in_visible_region ? fifo_out[11	:8] : 0;	// 15-11
-	assign blue_o = in_visible_region ? fifo_out[7:4] : 0;	// 10-5
-	assign green_o = in_visible_region ? fifo_out[3:0] : 0; // 4-0
+	assign red_o = in_visible_region ? fifo_out[11:8] : 0;
+	assign blue_o = in_visible_region ? fifo_out[7:4] : 0;
+	assign green_o = in_visible_region ? fifo_out[3:0] : 0;
 
 endmodule
