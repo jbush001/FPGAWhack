@@ -16,6 +16,79 @@
 
 import sys
 
+class CodeGenerator:
+	def __init__(self, filename):
+		self.operandStack = []
+		self.freeRegisters = [ x for x in range(7, -1, -1) ]
+		self.outputFile = open(filename, 'w')
+		self.numInstructions = 0
+
+	def pushConstant(self, value):
+		self.operandStack += [ ('const', value) ]
+
+	def pushVariableRef(self, index):
+		self.operandStack += [ ('freg', index ) ]
+
+	def doOp(self, operation):
+		type2, op2 = self.operandStack.pop()
+		type1, op1 = self.operandStack.pop()
+
+		if type1 == 'const':
+			# If the first operator is a constant, copy it into a register
+			tmpReg = self._allocateTemporary()
+			self._emitMicroInstruction(8, tmpReg, 0, 0, 1, op1)
+			type1 = 'reg'
+			op1 = tmpReg
+
+		# Free up temporary registers, allocate a result reg
+		if type2 == 'reg': self._freeTemporary(op2)
+		if type1 == 'reg': self._freeTemporary(op1)
+		resultReg = self._allocateTemporary()
+		self.operandStack += [ ('reg', resultReg)]
+		if type2 == 'const':
+			self._emitMicroInstruction(operation, resultReg, op1, 0, 1, op2)
+		else:
+			self._emitMicroInstruction(operation, resultReg, op1, op2, 0, 0)
+
+	def saveResult(self):
+		# Emit an instruction to move into the result register
+		type, op = self.operandStack.pop()
+		if type == 'reg' or type == 'freg':
+			self._emitMicroInstruction(0, 11, op, op, 0, 0)
+		elif type == 'const':
+			self._emitMicroInstruction(8, 11, 0, 0, 1, op)	# Constant
+		else:
+			raise Exception('internal error: bad type on operand stack')
+
+		# Pad the remaining instructions with NOPs.
+		for i in range(self.numInstructions, 16):
+			self.outputFile.write('0000000000000\n')
+
+		self.outputFile.close()
+
+	def _emitMicroInstruction(self, opcode, dest, srca, srcb, isConst, constVal):
+		self.numInstructions += 1
+		if self.numInstructions == 16:
+			raise Exception('formula too complex: exceeded instruction memory')
+			
+		self.outputFile.write('%013x\n' % ((dest << 45) | (srca << 41) | (srcb << 37) | (opcode << 33) | (isConst << 32) | constVal))
+
+		# Pretty print operation
+		pretty = [ 'and', 'xor', 'or', 'add', 'sub', 'mul', 'shl', 'shr', 'mov' ]
+		if isConst:
+			print '%s r%d, r%d, #%d' % (pretty[opcode], dest, srca, constVal)
+		else:
+			print '%s r%d, r%d, r%d' % (pretty[opcode], dest, srca, srcb)
+
+	def _allocateTemporary(self):
+		if len(self.freeRegisters) == 0:
+			raise Exception('formula too complex: out of registers')
+		else:
+			return self.freeRegisters.pop()
+		
+	def _freeTemporary(self, val):
+		self.freeRegisters += [ val ]
+
 class Scanner:
 	def __init__(self, stream):
 		self.pushBackChar = None
@@ -36,7 +109,7 @@ class Scanner:
 		while ch.isspace():
 			ch = self._nextChar()
 	
-		# Consume a token	
+		# Get next token
 		if ch == '':
 			# End of string
 			self.lastToken = None
@@ -111,79 +184,6 @@ class Scanner:
 
 	def _pushBackChar(self, ch):
 		self.pushBackChar = ch
-
-class CodeGenerator:
-	def __init__(self, filename):
-		self.operandStack = []
-		self.freeRegisters = [ x for x in range(7, -1, -1) ]
-		self.outputFile = open(filename, 'w')
-		self.numInstructions = 0
-
-	def pushConstant(self, value):
-		self.operandStack += [ ('const', value) ]
-
-	def pushVariableRef(self, index):
-		self.operandStack += [ ('freg', index ) ]
-
-	def _emitMicroInstruction(self, opcode, dest, srca, srcb, isConst, constVal):
-		self.numInstructions += 1
-		if self.numInstructions == 16:
-			raise Exception('formula too complex: exceeded instruction memory')
-			
-		self.outputFile.write('%013x\n' % ((dest << 45) | (srca << 41) | (srcb << 37) | (opcode << 33) | (isConst << 32) | constVal))
-
-		# Pretty print operation
-		pretty = [ 'and', 'xor', 'or', 'add', 'sub', 'mul', 'shl', 'shr', 'mov' ]
-		if isConst:
-			print '%s r%d, r%d, #%d' % (pretty[opcode], dest, srca, constVal)
-		else:
-			print '%s r%d, r%d, r%d' % (pretty[opcode], dest, srca, srcb)
-
-	def doOp(self, operation):
-		type2, op2 = self.operandStack.pop()
-		type1, op1 = self.operandStack.pop()
-
-		if type1 == 'const':
-			# If the first operator is a constant, copy it into a register
-			tmpReg = self._allocateTemporary()
-			self._emitMicroInstruction(8, tmpReg, 0, 0, 1, op1)
-			type1 = 'reg'
-			op1 = tmpReg
-
-		# Free up temporary registers, allocate a result reg
-		if type2 == 'reg': self._freeTemporary(op2)
-		if type1 == 'reg': self._freeTemporary(op1)
-		resultReg = self._allocateTemporary()
-		self.operandStack += [ ('reg', resultReg)]
-		if type2 == 'const':
-			self._emitMicroInstruction(operation, resultReg, op1, 0, 1, op2)
-		else:
-			self._emitMicroInstruction(operation, resultReg, op1, op2, 0, 0)
-
-	def saveResult(self):
-		# Emit an instruction to move into the result register
-		type, op = self.operandStack.pop()
-		if type == 'reg' or type == 'freg':
-			self._emitMicroInstruction(0, 11, op, op, 0, 0)
-		elif type == 'const':
-			self._emitMicroInstruction(8, 11, 0, 0, 1, op)	# Constant
-		else:
-			raise Exception('internal error: bad type on operand stack')
-
-		# Pad the remaining instructions with NOPs.
-		for i in range(self.numInstructions, 16):
-			self.outputFile.write('0000000000000\n')
-
-		self.outputFile.close()
-
-	def _allocateTemporary(self):
-		if len(self.freeRegisters) == 0:
-			raise Exception('formula too complex: out of registers')
-		else:
-			return self.freeRegisters.pop()
-		
-	def _freeTemporary(self, val):
-		self.freeRegisters += [ val ]
 
 class Parser:
 	def __init__(self, inputStream, generator):
