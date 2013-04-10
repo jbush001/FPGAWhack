@@ -170,6 +170,7 @@ class CodeGenerator:
 		else:
 			raise Exception('internal error: bad type on operand stack')
 
+		# Pad the remaining instructions with NOPs.
 		for i in range(self.numInstructions, 16):
 			self.outputFile.write('0000000000000\n')
 
@@ -185,9 +186,9 @@ class CodeGenerator:
 		self.freeRegisters += [ val ]
 
 class Parser:
-	def __init__(self, outputFile):
-		self.scanner = Scanner(sys.stdin)
-		self.generator = CodeGenerator(outputFile)
+	def __init__(self, inputStream, generator):
+		self.scanner = Scanner(inputStream)
+		self.generator = generator
 
 	def parse(self):
 		self._parseExpression()
@@ -214,11 +215,10 @@ class Parser:
 				raise Exception('parse error: expected )')
 		elif isinstance(tok, int) or isinstance(tok, long):
 			self.generator.pushConstant(tok)
+		elif tok in self.BUILTIN_VARS:
+			self.generator.pushVariableRef(self.BUILTIN_VARS[tok])
 		else:
-			if tok in self.BUILTIN_VARS:
-				self.generator.pushVariableRef(self.BUILTIN_VARS[tok])
-			else:
-				raise Exception('unknown variable ' + tok)
+			raise Exception('unexpected: ' + tok)
 
 	# Operator lookup table
 	# (precedence, opcode)
@@ -267,6 +267,6 @@ class Parser:
 
 			self.generator.doOp(outerOpcode)
 
-p = Parser('microcode.hex')
+p = Parser(sys.stdin, CodeGenerator('microcode.hex'))
 p.parse()
 
