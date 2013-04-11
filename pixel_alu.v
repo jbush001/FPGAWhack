@@ -36,6 +36,12 @@ module pixel_alu(
 	localparam OP_SHL = 6;
 	localparam OP_SHR = 7;
 	localparam OP_MOV = 8;
+	localparam OP_EQ = 9;
+	localparam OP_NEQ = 10;
+	localparam OP_GT = 11;
+	localparam OP_GTE = 12;
+	localparam OP_LT = 13;
+	localparam OP_LTE = 14;
 
 	localparam REG_X = 4'd8;
 	localparam REG_Y = 4'd9;
@@ -53,6 +59,9 @@ module pixel_alu(
 	reg[31:0] operand1;
 	reg[31:0] operand2;
 	reg[31:0] result;
+	wire[31:0] difference;
+	wire equal;
+	wire less;
 	integer i;
 
 	initial
@@ -86,6 +95,10 @@ module pixel_alu(
 		end
 	end
 
+	assign difference = operand1 - operand2;
+	assign equal = difference == 0;
+	assign less = difference[31];	// Difference is negative
+
 	always @*
 	begin
 		case (operation)
@@ -93,11 +106,17 @@ module pixel_alu(
 			OP_XOR:  result = operand1 ^ operand2;
 			OP_OR:   result = operand1 | operand2;
 			OP_ADD:  result = operand1 + operand2;
-			OP_SUB:  result = operand1 - operand2;
+			OP_SUB:  result = difference;
 			OP_MUL:  result = operand1 * operand2;
 			OP_SHL:  result = operand1 << operand2;
 			OP_SHR:  result = operand1 >> operand2;
 			OP_MOV:  result = operand2;
+			OP_EQ:   result = equal;
+			OP_NEQ:  result = !equal;
+			OP_GT:   result = !equal && !less;
+			OP_GTE:  result = !less;
+			OP_LT:   result = less;
+			OP_LTE:  result = less || equal;
 			default: result = 32'dX;
 		endcase
 	end

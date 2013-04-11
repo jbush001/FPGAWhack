@@ -74,7 +74,8 @@ class CodeGenerator:
 		self.outputFile.write('%013x\n' % ((dest << 45) | (srca << 41) | (srcb << 37) | (opcode << 33) | (isConst << 32) | constVal))
 
 		# Pretty print operation
-		pretty = [ 'and', 'xor', 'or', 'add', 'sub', 'mul', 'shl', 'shr', 'mov' ]
+		pretty = [ 'and', 'xor', 'or', 'add', 'sub', 'mul', 'shl', 'shr', 'mov',
+			'eq', 'neq', 'gt', 'gte', 'lt', 'lte' ]
 		if isConst:
 			print '%s r%d, r%d, #%d' % (pretty[opcode], dest, srca, constVal)
 		else:
@@ -98,6 +99,13 @@ class Scanner:
 
 	def pushBack(self):
 		self.pushBackToken = True
+
+	MULTIBYTE_TOKENS = {
+		'>' : [ '=', '>' ],
+		'<' : [ '=', '<' ],
+		'=' : [ '=' ],
+		'!' : [ '=' ],
+	}
 
 	def nextToken(self):
 		if self.pushBackToken:
@@ -143,20 +151,14 @@ class Scanner:
 
 				self._pushBackChar(ch)
 				self.lastToken = number
-		elif ch == '<':
+		elif ch in self.MULTIBYTE_TOKENS:
+			secondchars = self.MULTIBYTE_TOKENS[ch]
 			lookahead = self._nextChar()
-			if lookahead == '<':
-				self.lastToken = '<<'
+			if lookahead in secondchars:
+				self.lastToken = ch + lookahead
 			else:
-				self._pushBackChar()
-				self.lastToken = '<'
-		elif ch == '>':
-			lookahead = self._nextChar()
-			if lookahead == '>':
-				self.lastToken = '>>'
-			else:
-				self._pushBackChar()
-				self.lastToken = '>'
+				self._pushBackChar(lookahead)
+				self.lastToken = ch
 		elif ch.isalpha():
 			strval = ch
 			while True:
@@ -223,15 +225,21 @@ class Parser:
 	# Operator lookup table
 	# (precedence, opcode)
 	OPERATORS = {
-		'&' : ( 3, 0 ),
-		'^' : ( 2, 1 ),
 		'|' : ( 1, 2 ),
-		'+' : ( 5, 3 ),
-		'-' : ( 5, 4 ),
-		'*' : ( 6, 5 ),
-		'<<' : ( 4, 6 ),
-		'>>' : ( 4, 7 ),
-#		'/' : ( 7, -1 )
+		'^' : ( 2, 1 ),
+		'&' : ( 3, 0 ),
+		'==' : ( 4, 9 ),
+		'!=' : ( 4, 10 ),
+		'>' : ( 5, 11 ),
+		'<' : ( 5, 13 ),
+		'>=' : ( 5, 12 ),
+		'<=' : ( 5, 14 ),
+		'<<' : ( 6, 6 ),
+		'>>' : ( 6, 7 ),
+		'+' : ( 7, 3 ),
+		'-' : ( 7, 4 ),
+		'*' : ( 8, 5 ),
+#		'/' : ( 9, -1 )
 	}
 
 	def _parseInfixExpression(self, minPrecedence):
