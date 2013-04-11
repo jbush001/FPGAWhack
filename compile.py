@@ -125,7 +125,7 @@ class Scanner:
 			lookahead = self._nextChar()
 			if lookahead == '':
 				self.lastToken = None
-			elif lookahead == 'x':
+			elif ch == '0' and lookahead == 'x':
 				# Parse a hexadecimal number
 				number = 0
 				while True:
