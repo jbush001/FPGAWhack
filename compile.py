@@ -197,7 +197,7 @@ class Parser:
 		self.generator.saveResult()
 
 	def _parseExpression(self):	
-		self._parsePrimaryExpression()
+		self._parseUnaryExpression()
 		self._parseInfixExpression(0)
 
 	BUILTIN_VARS = {
@@ -221,6 +221,24 @@ class Parser:
 			self.generator.pushVariableRef(self.BUILTIN_VARS[tok])
 		else:
 			raise Exception('unexpected: ' + tok)
+
+	def _parseUnaryExpression(self):
+		lookahead = self.scanner.nextToken()
+		if lookahead == '-':
+			self.generator.pushConstant(0)
+			self._parseUnaryExpression()
+			self.generator.doOp(4)	# Subtract
+		elif lookahead == '~':
+			self._parseUnaryExpression()
+			self.generator.pushConstant(0xffffffff)
+			self.generator.doOp(1)	# Exclusive Or
+		elif lookahead == '!':
+			self._parseUnaryExpression()
+			self.generator.pushConstant(0)
+			self.generator.doOp(9)	# Equal to
+		else:
+			self.scanner.pushBack()
+			self._parsePrimaryExpression()
 
 	# Operator lookup table
 	# (precedence, opcode)
@@ -257,7 +275,7 @@ class Parser:
 				self.scanner.pushBack()
 				break
 
-			self._parsePrimaryExpression()
+			self._parseUnaryExpression()
 			while True:	# Shift loop
 				lookahead = self.scanner.nextToken()			
 				if lookahead == None:
