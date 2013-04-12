@@ -19,7 +19,7 @@ import sys
 class CodeGenerator:
 	def __init__(self, filename):
 		self.operandStack = []
-		self.freeRegisters = [ x for x in range(7, -1, -1) ]
+		self.freeRegisters = [ x for x in range(3, -1, -1) ]
 		self.outputFile = open(filename, 'w')
 		self.numInstructions = 0
 
@@ -32,11 +32,10 @@ class CodeGenerator:
 	def doOp(self, operation):
 		type2, op2 = self.operandStack.pop()
 		type1, op1 = self.operandStack.pop()
-
 		if type1 == 'const':
 			# If the first operator is a constant, copy it into a register
 			tmpReg = self._allocateTemporary()
-			self._emitMicroInstruction(8, tmpReg, 0, 0, 1, op1)
+			self._emitInstruction(8, tmpReg, 0, 0, 1, op1)
 			type1 = 'reg'
 			op1 = tmpReg
 
@@ -46,17 +45,17 @@ class CodeGenerator:
 		resultReg = self._allocateTemporary()
 		self.operandStack += [ ('reg', resultReg)]
 		if type2 == 'const':
-			self._emitMicroInstruction(operation, resultReg, op1, 0, 1, op2)
+			self._emitInstruction(operation, resultReg, op1, 0, 1, op2)
 		else:
-			self._emitMicroInstruction(operation, resultReg, op1, op2, 0, 0)
+			self._emitInstruction(operation, resultReg, op1, op2, 0, 0)
 
 	def saveResult(self):
-		# Emit an instruction to move into the result register
+		# Emit an instruction to move into the result register (7)
 		type, op = self.operandStack.pop()
 		if type == 'reg' or type == 'freg':
-			self._emitMicroInstruction(0, 11, op, op, 0, 0)
+			self._emitInstruction(0, 7, op, op, 0, 0)
 		elif type == 'const':
-			self._emitMicroInstruction(8, 11, 0, 0, 1, op)	# Constant
+			self._emitInstruction(8, 7, 0, 0, 1, op)	# Constant
 		else:
 			raise Exception('internal error: bad type on operand stack')
 
@@ -66,12 +65,12 @@ class CodeGenerator:
 
 		self.outputFile.close()
 
-	def _emitMicroInstruction(self, opcode, dest, srca, srcb, isConst, constVal):
+	def _emitInstruction(self, opcode, dest, srca, srcb, isConst, constVal):
 		self.numInstructions += 1
 		if self.numInstructions == 16:
 			raise Exception('formula too complex: exceeded instruction memory')
 			
-		self.outputFile.write('%013x\n' % ((dest << 45) | (srca << 41) | (srcb << 37) | (opcode << 33) | (isConst << 32) | constVal))
+		self.outputFile.write('%013x\n' % ((dest << 43) | (srca << 40) | (srcb << 37) | (opcode << 33) | (isConst << 32) | constVal))
 
 		# Pretty print operation
 		pretty = [ 'and', 'xor', 'or', 'add', 'sub', 'mul', 'shl', 'shr', 'mov',
@@ -201,11 +200,11 @@ class Parser:
 		self._parseInfixExpression(0)
 
 	BUILTIN_VARS = {
-		'x' : 8,
-		'ix' : 8,
-		'y' : 9,
-		'iy' : 9,
-		'f' : 10
+		'x' : 4,
+		'ix' : 4,
+		'y' : 5,
+		'iy' : 5,
+		'f' : 6
 	}
 
 	def _parsePrimaryExpression(self):

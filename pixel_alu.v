@@ -21,7 +21,7 @@
 
 module pixel_alu(
 	input				clk,
-	input[48:0]			instruction,
+	input[45:0]			instruction,
 	input[31:0] 		x_coord,
 	input[31:0]			y_coord,
 	input[31:0]			f_number,
@@ -43,16 +43,16 @@ module pixel_alu(
 	localparam OP_LT = 13;
 	localparam OP_LTE = 14;
 
-	localparam REG_X = 4'd8;
-	localparam REG_Y = 4'd9;
-	localparam REG_F = 4'd10;
-	localparam REG_RESULT = 4'd11;
+	localparam REG_X = 4'd4;
+	localparam REG_Y = 4'd5;
+	localparam REG_F = 4'd6;
+	localparam REG_RESULT = 4'd7;
 
-	reg[31:0] registers[0:7];
+	reg[31:0] registers[0:3];
 
-	wire[3:0] dest = instruction[48:45];
-	wire[3:0] srca = instruction[44:41];
-	wire[3:0] srcb = instruction[40:37];
+	wire[2:0] dest = instruction[45:43];
+	wire[2:0] srca = instruction[42:40];
+	wire[2:0] srcb = instruction[39:37];
 	wire[3:0] operation = instruction[36:33];
 	wire use_const = instruction[32];
 	wire[31:0] const_val = instruction[31:0];
@@ -67,14 +67,14 @@ module pixel_alu(
 	initial
 	begin
 		output_value = 0;
-		for (i = 0; i < 8; i = i + 1)
+		for (i = 0; i < 4; i = i + 1)
 			registers[i] = 0;
 	end
 
 	always @*
 	begin
 		casez (srca)
-			4'b0???: operand1 = registers[srca[2:0]];
+			3'b0??: operand1 = registers[srca[1:0]];
 			REG_X:   operand1 = x_coord;
 			REG_Y:   operand1 = y_coord;
 			REG_F:   operand1 = f_number;
@@ -86,7 +86,7 @@ module pixel_alu(
 		else 
 		begin
 			casez (srcb)
-				4'b0???: operand2 = registers[srcb[2:0]];
+				3'b0??: operand2 = registers[srcb[1:0]];
 				REG_X:   operand2 = x_coord;
 				REG_Y:   operand2 = y_coord;
 				REG_F:   operand2 = f_number;
@@ -123,7 +123,9 @@ module pixel_alu(
 
 	always @(posedge clk)
 	begin
-		registers[dest] <= result;
+		if (!dest[2])
+			registers[dest[2:0]] <= result;
+
 		if (dest == REG_RESULT)
 			output_value <= { result[23:20], result[15:12], result[7:4] };
 	end

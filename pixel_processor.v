@@ -25,9 +25,9 @@ module pixel_processor
 	output[OUTPUT_WIDTH - 1:0] result,
 	output result_ready);
 
-	localparam INSTRUCTION_WIDTH = 49;
+	localparam INSTRUCTION_WIDTH = 46;
 
-	reg[3:0] micro_pc;
+	reg[3:0] pc;
 	wire[INSTRUCTION_WIDTH - 1:0] instruction;
 	reg[31:0] x_coord0;
 	reg[31:0] x_coord1;
@@ -104,9 +104,9 @@ module pixel_processor
 		.f_number(f_number),
 		.output_value(result[95:84]));
 
-	sram_1r1w #(INSTRUCTION_WIDTH, 16) microcode_mem(
+	sram_1r1w #(INSTRUCTION_WIDTH, 16) instruction_mem(
 		.clk(clk),
-		.rd_addr(micro_pc),
+		.rd_addr(pc),
 		.rd_data(instruction),
 		.wr_enable(0),
 		.wr_addr(4'd0),
@@ -114,7 +114,7 @@ module pixel_processor
 	
 	initial
 	begin
-		micro_pc = 0;
+		pc = 0;
 		y_coord = 0;
 		x_coord0 = 0;
 		x_coord1 = 0;
@@ -127,15 +127,15 @@ module pixel_processor
 		f_number = 0;
 	end
 
-	assign result_ready = micro_pc == 4'b1111;
+	assign result_ready = pc == 4'b1111;
 	wire end_of_line = x_coord0 == 640 - NUM_PIXELS;
 
 	always @(posedge clk)
 	begin
 		if (new_frame || start_next_batch)
-			micro_pc <= 5'd0;
+			pc <= 5'd0;
 		else if (!result_ready)
-			micro_pc <= micro_pc + 1;
+			pc <= pc + 1;
 
 		if (new_frame)
 		begin
@@ -158,14 +158,14 @@ module pixel_processor
 		end
 		else if (start_next_batch)
 		begin
-			x_coord0 <= x_coord0 + 8;
-			x_coord1 <= x_coord1 + 8;
-			x_coord2 <= x_coord2 + 8;
-			x_coord3 <= x_coord3 + 8;
-			x_coord4 <= x_coord4 + 8;
-			x_coord5 <= x_coord5 + 8;
-			x_coord6 <= x_coord6 + 8;
-			x_coord7 <= x_coord7 + 8;
+			x_coord0 <= x_coord0 + NUM_PIXELS;
+			x_coord1 <= x_coord1 + NUM_PIXELS;
+			x_coord2 <= x_coord2 + NUM_PIXELS;
+			x_coord3 <= x_coord3 + NUM_PIXELS;
+			x_coord4 <= x_coord4 + NUM_PIXELS;
+			x_coord5 <= x_coord5 + NUM_PIXELS;
+			x_coord6 <= x_coord6 + NUM_PIXELS;
+			x_coord7 <= x_coord7 + NUM_PIXELS;
 		end
 	end
 endmodule
