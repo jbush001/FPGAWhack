@@ -219,7 +219,7 @@ class Parser:
 		elif tok in self.BUILTIN_VARS:
 			self.generator.pushVariableRef(self.BUILTIN_VARS[tok])
 		else:
-			raise Exception('unexpected: ' + tok)
+			raise Exception('unexpected: ' + str(tok))
 
 	def _parseUnaryExpression(self):
 		lookahead = self.scanner.nextToken()
@@ -262,7 +262,7 @@ class Parser:
 	def _parseInfixExpression(self, minPrecedence):
 		while True:	# Reduce loop
 			outerOp = self.scanner.nextToken()
-			if outerOp == None or outerOp not in self.OPERATORS:
+			if outerOp not in self.OPERATORS:
 				self.scanner.pushBack()
 				break
 			
@@ -275,7 +275,7 @@ class Parser:
 			while True:	# Shift loop
 				lookahead = self.scanner.nextToken()			
 				self.scanner.pushBack()
-				if lookahead == None or lookahead not in self.OPERATORS:
+				if lookahead not in self.OPERATORS:
 					break
 					
 				innerPrecedence, _ignore = self.OPERATORS[lookahead]
