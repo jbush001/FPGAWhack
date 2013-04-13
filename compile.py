@@ -262,10 +262,7 @@ class Parser:
 	def _parseInfixExpression(self, minPrecedence):
 		while True:	# Reduce loop
 			outerOp = self.scanner.nextToken()
-			if outerOp == None:
-				break
-
-			if outerOp not in self.OPERATORS:
+			if outerOp == None or outerOp not in self.OPERATORS:
 				self.scanner.pushBack()
 				break
 			
@@ -277,11 +274,8 @@ class Parser:
 			self._parseUnaryExpression()
 			while True:	# Shift loop
 				lookahead = self.scanner.nextToken()			
-				if lookahead == None:
-				 	break
-				 
 				self.scanner.pushBack()
-				if lookahead not in self.OPERATORS:
+				if lookahead == None or lookahead not in self.OPERATORS:
 					break
 					
 				innerPrecedence, _ignore = self.OPERATORS[lookahead]
