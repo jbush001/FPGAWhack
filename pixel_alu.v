@@ -124,7 +124,7 @@ module pixel_alu(
 	always @(posedge clk)
 	begin
 		if (!dest[2])
-			registers[dest[2:0]] <= result;
+			registers[dest[1:0]] <= result;
 
 		if (dest == REG_RESULT)
 			output_value <= { result[23:20], result[15:12], result[7:4] };
