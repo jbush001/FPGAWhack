@@ -57,12 +57,14 @@ module pixel_processor
 		end
 	endgenerate
 
-	sram_1r1w #(INSTRUCTION_WIDTH, 16) instruction_mem(
+	localparam MAX_INSTRUCTIONS = NUM_PIXELS * 2;
+
+	sram_1r1w #(INSTRUCTION_WIDTH, MAX_INSTRUCTIONS) instruction_mem(
 		.clk(clk),
 		.rd_addr(pc),
 		.rd_data(instruction),
 		.wr_enable(0),
-		.wr_addr(4'd0),
+		.wr_addr(0),
 		.wr_data({INSTRUCTION_WIDTH{1'b0}}));
 	
 	initial
@@ -72,7 +74,7 @@ module pixel_processor
 		f_number = 0;
 	end
 
-	assign result_ready = pc == 4'b1111;
+	assign result_ready = pc == MAX_INSTRUCTIONS - 1;
 	wire end_of_line = pixel_compute[0].x_coord == 640 - NUM_PIXELS;
 
 	always @(posedge clk)

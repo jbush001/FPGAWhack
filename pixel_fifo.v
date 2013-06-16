@@ -20,9 +20,9 @@
 // 
 
 module pixel_fifo
-	#(parameter NUM_ELEMS = 16,
-	parameter ELEM_WIDTH = 16,
-	parameter VALUE_IN_WIDTH = NUM_ELEMS * ELEM_WIDTH)
+	#(parameter NUM_PIXELS = 16,
+	parameter PIXEL_WIDTH = 16,
+	parameter VALUE_IN_WIDTH = NUM_PIXELS * PIXEL_WIDTH)
 
 	(input clk,
 	input reset,
@@ -31,11 +31,11 @@ module pixel_fifo
 	input enqueue,
 	input[VALUE_IN_WIDTH - 1:0] value_in,
 	input dequeue,
-	output[ELEM_WIDTH - 1:0] value_out);
+	output[PIXEL_WIDTH - 1:0] value_out);
 
-	localparam COUNT_WIDTH = $clog2(NUM_ELEMS) + 1;
+	localparam COUNT_WIDTH = $clog2(NUM_PIXELS) + 1;
 
-	reg[ELEM_WIDTH - 1:0] data[0:NUM_ELEMS - 1];
+	reg[PIXEL_WIDTH - 1:0] data[0:NUM_PIXELS - 1];
 	reg[COUNT_WIDTH - 1:0] element_count;
 	assign value_out = data[0];
 	integer i;
@@ -45,7 +45,7 @@ module pixel_fifo
 		empty = 1;
 		almost_empty = 1;
 		element_count = 0;
-		for (i = 0; i < NUM_ELEMS; i = i + 1)
+		for (i = 0; i < NUM_PIXELS; i = i + 1)
 			data[i] = 0;
 	end
 	
@@ -56,16 +56,16 @@ module pixel_fifo
 			element_count <= 0;
 			almost_empty <= 0;
 			empty <= 1;
-			for (i = 0; i < NUM_ELEMS; i = i + 1)
+			for (i = 0; i < NUM_PIXELS; i = i + 1)
 				data[i] = 0;
 		end
 		else if (enqueue)
 		begin
-			element_count <= NUM_ELEMS;
+			element_count <= NUM_PIXELS;
 			almost_empty <= 0;
 			empty <= 0;
-			for (i = 0; i < NUM_ELEMS; i = i + 1)
-				data[i] <= value_in >> (i * ELEM_WIDTH);
+			for (i = 0; i < NUM_PIXELS; i = i + 1)
+				data[i] <= value_in >> (i * PIXEL_WIDTH);
 		end
 		else if (dequeue)
 		begin
@@ -80,7 +80,7 @@ module pixel_fifo
 			if (element_count != 0)
 				element_count <= element_count - 1;
 
-			for (i = 0; i < NUM_ELEMS - 1; i = i + 1)
+			for (i = 0; i < NUM_PIXELS - 1; i = i + 1)
 				data[i] <= data[i + 1];
 		end
 	end

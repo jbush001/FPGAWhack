@@ -22,13 +22,16 @@ module top(
 	output [3:0] blue_o,
 	output [3:0] green_o);
 
+	localparam NUM_PIXELS = 8;	// How many are computed in parallel
+	localparam PIXEL_WIDTH = 12;
+
 	wire in_visible_region;
 	wire pixel_out;
 	wire new_frame;
 	wire fifo_almost_empty;
 	wire fifo_empty;
-	wire[95:0] fifo_in;
-	wire[11:0] fifo_out;
+	wire[NUM_PIXELS * PIXEL_WIDTH - 1:0] fifo_in;
+	wire[PIXEL_WIDTH - 1:0] fifo_out;
 	wire pixels_ready;
 	wire start_next_batch = pixels_ready && (fifo_almost_empty || fifo_empty)
 		&& pixel_out;
@@ -41,7 +44,7 @@ module top(
 		.pixel_out(pixel_out),
 		.new_frame(new_frame));
 
-	pixel_fifo #(8, 12) pixel_fifo(
+	pixel_fifo #(.NUM_PIXELS(NUM_PIXELS), .PIXEL_WIDTH(PIXEL_WIDTH)) pixel_fifo(
 		.clk(clk),
 		.reset(new_frame),
 		.almost_empty(fifo_almost_empty),
@@ -51,7 +54,7 @@ module top(
 		.dequeue(pixel_out),
 		.value_out(fifo_out));
 
-	pixel_processor pixel_processor(
+	pixel_processor #(.NUM_PIXELS(NUM_PIXELS), .PIXEL_WIDTH(PIXEL_WIDTH)) pixel_processor(
 		.clk(clk),
 		.new_frame(new_frame),
 		.result(fifo_in),
