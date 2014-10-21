@@ -10,4 +10,6 @@ _enter a formula followed by ctrl-D_
 
     x+y+f
     
-Synthesize the design on Quartus.  This has been tested on the Cyclone II starter kit.
+Synthesize the design on Quartus.  This has been tested on the Cyclone II starter kit dev board.
+
+Details of operation are in the Wiki: https://github.com/jbush001/FPGAWhack/wiki
