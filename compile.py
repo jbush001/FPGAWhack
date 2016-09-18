@@ -259,8 +259,9 @@ class Parser:
 #		'/' : ( 9, -1 )
 	}
 
+	# https://en.wikipedia.org/wiki/Operator-precedence_parser#Precedence_climbing_method
 	def _parseInfixExpression(self, minPrecedence):
-		while True:	# Reduce loop
+		while True:
 			outerOp = self.scanner.nextToken()
 			if outerOp not in self.OPERATORS:
 				self.scanner.pushBack()
@@ -272,7 +273,7 @@ class Parser:
 				break
 
 			self._parseUnaryExpression()
-			while True:	# Shift loop
+			while True:
 				lookahead = self.scanner.nextToken()			
 				self.scanner.pushBack()
 				if lookahead not in self.OPERATORS:
